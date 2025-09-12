@@ -41,7 +41,7 @@ docker run -d \
   -e AWS_ACCESS_KEY_ID=AKIA... \
   -e AWS_SECRET_ACCESS_KEY=... \
   -e CRON_SCHEDULE="0 2 * * *" \
-  dockerhub.socialme.com.br/impacto-apis/firebird-backup-s3-cron:main
+  ghcr.io/marcelofmatos/firebird-backup-s3-cron:latest
 ```
 
 ## Uso com Docker Compose
@@ -50,7 +50,7 @@ docker run -d \
 version: '3.8'
 services:
   fb-backup-s3:
-    image: dockerhub.socialme.com.br/impacto-apis/firebird-backup-s3-cron:main
+    image: ghcr.io/marcelofmatos/firebird-backup-s3-cron:latest
     environment:
       FB_HOST: "firebird-server"
       FB_PORT: 3050

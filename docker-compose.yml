@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   fb-backup-s3:
-    image: dockerhub.socialme.com.br/impacto-apis/firebird-backup-s3-cron:main
+    image: ghcr.io/marcelofmatos/firebird-backup-s3-cron:latest
     environment:
       FB_HOST: "firebird-server"
       FB_PORT: 3050
