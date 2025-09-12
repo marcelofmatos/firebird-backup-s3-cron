@@ -5,7 +5,7 @@ FB_PORT=${FB_PORT:-"3050"}
 FB_USER=${FB_USER:-"SYSDBA"}
 FB_PASSWORD=${FB_PASSWORD:-"masterkey"}
 FB_DATABASE_PATH=${FB_DATABASE_PATH:-"/data/DATABASE.FDB"}
-BACKUP_DIR="/backup"
+BACKUP_DIR=${BACKUP_DIR:-"/data/backups"}
 S3_DIRECTORY_NAME=${S3_DIRECTORY_NAME:-"firebird-backups"}
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
