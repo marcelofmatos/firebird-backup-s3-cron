@@ -14,7 +14,7 @@ services:
       AWS_ACCESS_KEY_ID: "your_access_key_id"
       AWS_SECRET_ACCESS_KEY: "your_secret_access_key"
       S3_DIRECTORY_NAME: ${DOCKER_STACK_NAME}
-      RESTORE_BACKUP_FILE: "restorebackupfile.fbk.gz"
+      #RESTORE_BACKUP_FILE: "restorebackupfile.fbk.gz"
     deploy:
       mode: replicated
       replicas: 1
