@@ -1,13 +1,13 @@
-FROM postgres:15-alpine
+FROM alpine:3.18
 
-RUN apk add --no-cache bash curl ca-certificates aws-cli py3-pip \
+RUN apk add --no-cache bash curl ca-certificates aws-cli py3-pip firebird-client firebird-utils \
     && rm -rf /var/cache/apk/*
 
-ENV PGHOST=database
-ENV PGPORT=5432
-ENV PGUSER=postgres
-ENV PGPASSWORD=postgres
-ENV PGDATABASE=database
+ENV FB_HOST=localhost
+ENV FB_PORT=3050
+ENV FB_USER=SYSDBA
+ENV FB_PASSWORD=masterkey
+ENV FB_DATABASE_PATH=/data/DATABASE.FDB
 ENV S3_BUCKET_NAME=your_s3_bucket_name
 ENV S3_REGION=sa-east-1
 ENV AWS_ACCESS_KEY_ID=your_access_key_id

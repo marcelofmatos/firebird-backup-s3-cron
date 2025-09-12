@@ -1,20 +1,20 @@
 version: '3.8'
 
 services:
-  pg-backup-s3:
-    image: dockerhub.socialme.com.br/impacto-apis/postgresql-backup-s3-cron:main
+  fb-backup-s3:
+    image: dockerhub.socialme.com.br/impacto-apis/firebird-backup-s3-cron:main
     environment:
-      PGHOST: "database"
-      PGPORT: 5432
-      PGUSER: "postgres"
-      PGPASSWORD: "postgres"
-      PGDATABASE: "database"
+      FB_HOST: "firebird-server"
+      FB_PORT: 3050
+      FB_USER: "SYSDBA"
+      FB_PASSWORD: "masterkey"
+      FB_DATABASE_PATH: "/data/SIP.FDB"
       S3_BUCKET_NAME: "your_s3_bucket_name"
       S3_REGION: "sa-east-1"
       AWS_ACCESS_KEY_ID: "your_access_key_id"
       AWS_SECRET_ACCESS_KEY: "your_secret_access_key"
       S3_DIRECTORY_NAME: ${DOCKER_STACK_NAME}
-      RESTORE_BACKUP_FILE: "restorebackupfile.sql.gz"
+      RESTORE_BACKUP_FILE: "restorebackupfile.fbk.gz"
     deploy:
       mode: replicated
       replicas: 1

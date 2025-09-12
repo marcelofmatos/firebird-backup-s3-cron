@@ -1,33 +1,45 @@
 #!/bin/bash
 
-PGHOST=${PGHOST:-"localhost"}
-PGPORT=${PGPORT:-"5432"}
-PGUSER=${PGUSER:-"postgres"}
+FB_HOST=${FB_HOST:-"localhost"}
+FB_PORT=${FB_PORT:-"3050"}
+FB_USER=${FB_USER:-"SYSDBA"}
+FB_PASSWORD=${FB_PASSWORD:-"masterkey"}
+FB_DATABASE_PATH=${FB_DATABASE_PATH:-"/data/DATABASE.FDB"}
 BACKUP_DIR="/backup"
-S3_DIRECTORY_NAME=${S3_DIRECTORY_NAME:-"postgres-backups"}
-TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+S3_DIRECTORY_NAME=${S3_DIRECTORY_NAME:-"firebird-backups"}
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 mkdir -p "$BACKUP_DIR"
 
-echo "Iniciando backup..."
+echo "Iniciando backup do Firebird..."
 
-DATABASES=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -lqt | cut -d'|' -f1 | grep -v template | grep -v postgres | grep -v "prisma_migrate_shadow" | sed '/^$/d' | sed 's/^ *//')
+DB_NAME=$(basename "$FB_DATABASE_PATH" .FDB)
+BACKUP_FILE_FBK="$BACKUP_DIR/${FB_HOST}_${DB_NAME}_${TIMESTAMP}.fbk"
+BACKUP_FILE_GZ="$BACKUP_DIR/${FB_HOST}_${DB_NAME}_${TIMESTAMP}.fbk.gz"
 
-for database in $DATABASES; do
-    echo "Backup: $database"
-    BACKUP_FILE="$BACKUP_DIR/${PGHOST}_${database}_${TIMESTAMP}.sql.gz"
+echo "Backup: $DB_NAME"
+echo "Conectando em: $FB_HOST:$FB_PORT:$FB_DATABASE_PATH"
+
+if gbak -b -v -g -se "$FB_HOST:$FB_PORT" "$FB_DATABASE_PATH" "$BACKUP_FILE_FBK" -user "$FB_USER" -pass "$FB_PASSWORD"; then
+    echo "Backup criado com sucesso: $BACKUP_FILE_FBK"
     
-    pg_dump -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$database" | gzip > "$BACKUP_FILE"
+    echo "Compactando backup..."
+    gzip "$BACKUP_FILE_FBK"
     
-    aws s3 cp "$BACKUP_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION"
-    
-    rm "$BACKUP_FILE"
-done
+    echo "Enviando para S3..."
+    if aws s3 cp "$BACKUP_FILE_GZ" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION"; then
+        echo "Backup enviado para S3 com sucesso"
+        rm "$BACKUP_FILE_GZ"
+        echo "Arquivo local removido"
+    else
+        echo "Erro ao enviar backup para S3"
+        rm "$BACKUP_FILE_GZ"
+        exit 1
+    fi
+else
+    echo "Erro ao criar backup do banco $DB_NAME"
+    [ -f "$BACKUP_FILE_FBK" ] && rm "$BACKUP_FILE_FBK"
+    exit 1
+fi
 
-echo "Backup das configurações globais..."
-GLOBALS_FILE="$BACKUP_DIR/${PGHOST}_globals_${TIMESTAMP}.sql.gz"
-pg_dumpall -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" --globals-only | gzip > "$GLOBALS_FILE"
-aws s3 cp "$GLOBALS_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION"
-rm "$GLOBALS_FILE"
-
-echo "Backup concluído!"
+echo "Backup do Firebird concluído!"
