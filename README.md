@@ -2,6 +2,8 @@
 
 Sistema automatizado de backup para bancos de dados Firebird com envio para Amazon S3.
 
+Baseado em Ubuntu 22.04 com ferramentas oficiais do Firebird.
+
 ## Funcionamento
 
 O sistema realiza backup usando `gbak` (Firebird backup utility), compacta o arquivo resultante e envia para um bucket S3 configurado. O processo é executado via cron job conforme agendamento definido.
@@ -30,12 +32,12 @@ O sistema realiza backup usando `gbak` (Firebird backup utility), compacta o arq
 
 ```bash
 docker run -d \
-  -e FB_HOST=10.0.0.95 \
+  -e FB_HOST=192.168.1.100 \
   -e FB_PORT=3050 \
-  -e FB_DATABASE_PATH=/data/SIP.FDB \
-  -e FB_USER=SYSADM \
-  -e FB_PASSWORD=masterkey \
-  -e S3_BUCKET_NAME=meu-bucket-backups \
+  -e FB_DATABASE_PATH=/data/DATABASE.FDB \
+  -e FB_USER=SYSDBA \
+  -e FB_PASSWORD=suasenha \
+  -e S3_BUCKET_NAME=seu-bucket-backups \
   -e AWS_ACCESS_KEY_ID=AKIA... \
   -e AWS_SECRET_ACCESS_KEY=... \
   -e CRON_SCHEDULE="0 2 * * *" \
@@ -52,7 +54,7 @@ services:
     environment:
       FB_HOST: "firebird-server"
       FB_PORT: 3050
-      FB_DATABASE_PATH: "/data/SIP.FDB"
+      FB_DATABASE_PATH: "/data/DATABASE.FDB"
       FB_USER: "SYSDBA"
       FB_PASSWORD: "masterkey"
       S3_BUCKET_NAME: "backup-bucket"
@@ -65,6 +67,7 @@ services:
 - `/usr/local/bin/backup.sh`: Executa backup do Firebird
 - `/usr/local/bin/restore.sh`: Baixa e prepara backup para restauração
 - `/usr/local/bin/test-connection.sh`: Testa conectividade com Firebird e S3
+- `/usr/local/bin/check-tools.sh`: Verifica instalação dos utilitários Firebird
 - `/usr/local/bin/list.sh`: Lista backups no S3
 - `/usr/local/bin/s3_bucket_list.sh`: Lista conteúdo do bucket S3
 
@@ -82,6 +85,12 @@ Parâmetros:
 
 ## Testando o Sistema
 
+Verifique a instalação dos utilitários:
+
+```bash
+docker exec -it <container_id> /usr/local/bin/check-tools.sh
+```
+
 Antes de ativar o backup automático, teste a conectividade:
 
 ```bash
@@ -92,4 +101,19 @@ Para executar backup manual:
 
 ```bash
 docker exec -it <container_id> /usr/local/bin/backup.sh
+```
+
+## Build da Imagem
+
+Para construir a imagem localmente:
+
+```bash
+chmod +x build.sh
+./build.sh
+```
+
+Ou manualmente:
+
+```bash
+docker build -t firebird-backup-s3-cron:latest .
 ```

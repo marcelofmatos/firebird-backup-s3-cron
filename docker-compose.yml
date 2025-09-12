@@ -8,7 +8,7 @@ services:
       FB_PORT: 3050
       FB_USER: "SYSDBA"
       FB_PASSWORD: "masterkey"
-      FB_DATABASE_PATH: "/data/SIP.FDB"
+      FB_DATABASE_PATH: "/data/DATABASE.FDB"
       S3_BUCKET_NAME: "your_s3_bucket_name"
       S3_REGION: "sa-east-1"
       AWS_ACCESS_KEY_ID: "your_access_key_id"

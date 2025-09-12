@@ -18,7 +18,7 @@ TEMP_OUTPUT_FILE="/tmp/test_output.txt"
 
 echo "SELECT COUNT(*) FROM RDB\$RELATIONS;" > "$TEMP_QUERY_FILE"
 
-if isql -user "$FB_USER" -password "$FB_PASSWORD" -i "$TEMP_QUERY_FILE" -o "$TEMP_OUTPUT_FILE" "$FB_HOST/$FB_PORT:$FB_DATABASE_PATH" 2>/dev/null; then
+if isql-fb -user "$FB_USER" -password "$FB_PASSWORD" -i "$TEMP_QUERY_FILE" -o "$TEMP_OUTPUT_FILE" "$FB_HOST/$FB_PORT:$FB_DATABASE_PATH" 2>/dev/null; then
     echo "✓ Conexão com Firebird estabelecida com sucesso!"
     echo "Tabelas encontradas no banco:"
     cat "$TEMP_OUTPUT_FILE" | tail -n +3

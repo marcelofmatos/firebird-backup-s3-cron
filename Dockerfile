@@ -1,7 +1,18 @@
-FROM alpine:3.18
+FROM ubuntu:22.04
 
-RUN apk add --no-cache bash curl ca-certificates aws-cli py3-pip firebird-client firebird-utils \
-    && rm -rf /var/cache/apk/*
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    firebird3.0-utils \
+    firebird3.0-common \
+    curl \
+    ca-certificates \
+    python3-pip \
+    gzip \
+    cron \
+    && pip3 install awscli \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV FB_HOST=localhost
 ENV FB_PORT=3050

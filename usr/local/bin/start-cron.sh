@@ -51,13 +51,10 @@ echo ""
 echo "Cron iniciado"
 
 # Início do Serviço Cron
-if command -v crond >/dev/null 2>&1; then
-  echo "Iniciando crond..."
-  exec crond -f -L /proc/1/fd/1
-elif command -v cron >/dev/null 2>&1; then
+if command -v cron >/dev/null 2>&1; then
   echo "Iniciando cron..."
   exec cron -f
 else
-  echo "Erro: Nenhum daemon cron encontrado. Instale o cron ou crond."
+  echo "Erro: Daemon cron não encontrado. Instale o cron."
   exit 1
 fi
