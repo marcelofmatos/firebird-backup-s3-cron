@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
-          token: ${{ secrets.SOCIALMEDEV_TOKEN_SECRET }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verificar submódulos
         run: |
@@ -42,7 +42,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
-          token: ${{ secrets.SOCIALMEDEV_TOKEN_SECRET }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
         run: docker build --build-arg APP_VERSION=test_build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) .
