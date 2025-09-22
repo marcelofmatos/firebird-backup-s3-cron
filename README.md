@@ -24,6 +24,13 @@ O sistema realiza backup usando `gbak` (Firebird backup utility), compacta o arq
 - `AWS_SECRET_ACCESS_KEY`: Chave secreta AWS
 - `S3_DIRECTORY_NAME`: Diretório no bucket (padrão: firebird-backups)
 
+### Compressão
+- `COMPRESSION_TYPE`: Tipo de compressão aplicada ao backup (padrão: gzip)
+  - `gzip` ou `tgz`: Compressão gzip (padrão, compatibilidade retroativa)
+  - `7zip` ou `7z`: Compressão 7-Zip (requer p7zip-full)
+  - `zip`: Compressão ZIP (requer zip)
+  - `none`: Sem compressão (arquivo .fbk original)
+
 ### Agendamento
 - `CRON_SCHEDULE`: Agendamento cron (padrão: "0 22 * * *" - 22h diariamente)
 - `CRON_BACKUP_COMMAND`: Comando executado (padrão: backup.sh com logs)
@@ -40,6 +47,7 @@ docker run -d \
   -e S3_BUCKET_NAME=seu-bucket-backups \
   -e AWS_ACCESS_KEY_ID=AKIA... \
   -e AWS_SECRET_ACCESS_KEY=... \
+  -e COMPRESSION_TYPE=7zip \
   -e CRON_SCHEDULE="0 2 * * *" \
   ghcr.io/marcelofmatos/firebird-backup-s3-cron:latest
 ```
@@ -60,6 +68,7 @@ services:
       S3_BUCKET_NAME: "backup-bucket"
       AWS_ACCESS_KEY_ID: "AKIA..."
       AWS_SECRET_ACCESS_KEY: "..."
+      COMPRESSION_TYPE: "zip"
 ```
 
 ## Scripts Disponíveis

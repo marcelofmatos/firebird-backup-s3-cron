@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     python3-pip \
     gzip \
+    zip \
+    p7zip-full \
     cron \
     && pip3 install awscli \
     && apt-get clean \
@@ -24,6 +26,7 @@ ENV S3_REGION=sa-east-1
 ENV AWS_ACCESS_KEY_ID=your_access_key_id
 ENV AWS_SECRET_ACCESS_KEY=your_secret_access_key
 ENV S3_DIRECTORY_NAME=default-directory
+ENV COMPRESSION_TYPE=gzip
 ENV CRON_SCHEDULE="0 22 * * *"
 ENV CRON_BACKUP_COMMAND="/usr/local/bin/backup.sh > /proc/1/fd/1 2>&1"
 
