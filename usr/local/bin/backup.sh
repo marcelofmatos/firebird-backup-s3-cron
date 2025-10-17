@@ -17,7 +17,8 @@ mkdir -p "$BACKUP_DIR"
 echo "Iniciando backup do Firebird..."
 
 DB_NAME=$(basename "$FB_DATABASE_PATH" .FDB)
-BACKUP_FILE_FBK="$BACKUP_DIR/${FB_HOST}_${DB_NAME}_${TIMESTAMP}.fbk"
+FB_HOST_CLEAN="${FB_HOST%%:*}"
+BACKUP_FILE_FBK="$BACKUP_DIR/${FB_HOST_CLEAN}_${DB_NAME}_${TIMESTAMP}.fbk"
 
 # Determine file extension and archive filename based on compression type
 case "$COMPRESSION_TYPE" in
@@ -34,7 +35,7 @@ case "$COMPRESSION_TYPE" in
         EXT="fbk.gz"
         ;;
 esac
-ARCHIVE_FILE="$BACKUP_DIR/${FB_HOST}_${DB_NAME}_${TIMESTAMP}.$EXT"
+ARCHIVE_FILE="$BACKUP_DIR/${FB_HOST_CLEAN}_${DB_NAME}_${TIMESTAMP}.$EXT"
 
 echo "Backup: $DB_NAME"
 echo "Conectando em: $FB_HOST:$FB_PORT:$FB_DATABASE_PATH"
