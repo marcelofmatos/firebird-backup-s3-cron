@@ -8,6 +8,8 @@ FB_DATABASE_PATH=${FB_DATABASE_PATH:-"/data/DATABASE.FDB"}
 BACKUP_DIR=${BACKUP_DIR:-"/data/backups"}
 S3_BUCKET_NAME=${S3_BUCKET_NAME:-""}
 S3_DIRECTORY_NAME=${S3_DIRECTORY_NAME:-"firebird-backups"}
+S3_PARAMS=${S3_PARAMS:-""}
+S3_REGION=${S3_REGION:-"us-east-1"}
 # Compression type: gzip, tgz, 7zip, 7z, zip, none (default: gzip for backward compatibility)
 COMPRESSION_TYPE=${COMPRESSION_TYPE:-"gzip"}
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -81,7 +83,7 @@ if gbak -b -v -g -se "$FB_HOST:$FB_PORT" "$FB_DATABASE_PATH" "$BACKUP_FILE_FBK" 
         
         if [ -n "$S3_BUCKET_NAME" ]; then
             echo "Enviando para S3..."
-            if aws s3 cp "$ARCHIVE_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION"; then
+            if aws s3 cp "$ARCHIVE_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION" --storage-class GLACIER_IR $S3_PARAMS; then
                 echo "Backup enviado para S3 com sucesso"
                 rm "$ARCHIVE_FILE"
                 echo "Arquivo local removido"
