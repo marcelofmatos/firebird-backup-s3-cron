@@ -85,14 +85,22 @@ if gbak -b -v -g -se "$FB_HOST:$FB_PORT" "$FB_DATABASE_PATH" "$BACKUP_FILE_FBK" 
             echo "Enviando para S3..."
             if aws s3 cp "$ARCHIVE_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION" --storage-class GLACIER_IR $S3_PARAMS; then
                 echo "Backup enviado para S3 com sucesso"
-                rm "$ARCHIVE_FILE"
-                echo "Arquivo local removido"
             else
                 echo "Erro ao enviar backup para S3"
-                [ -f "$ARCHIVE_FILE" ] && rm "$ARCHIVE_FILE"
                 exit 1
             fi
         fi
+        # Remove local archive if DELETE_LOCAL_AFTER_UPLOAD is true
+        case "${DELETE_LOCAL_AFTER_UPLOAD:-true}" in
+            1|true|TRUE|True|y|Y|yes|YES|Yes)
+                echo "Flag DELETE_LOCAL_AFTER_UPLOAD ativa: arquivo será removido após envio."
+                rm "$ARCHIVE_FILE"
+                echo "Arquivo local removido"
+                ;;
+            *)
+                echo "Flag DELETE_LOCAL_AFTER_UPLOAD desativada: mantendo arquivo original."
+                ;;
+        esac
     else
         echo "Erro na compressão"
         [ -f "$BACKUP_FILE_FBK" ] && rm "$BACKUP_FILE_FBK"
