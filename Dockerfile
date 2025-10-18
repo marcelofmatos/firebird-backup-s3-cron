@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     p7zip-full \
     cron \
+    tzdata \
     && pip3 install awscli \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
