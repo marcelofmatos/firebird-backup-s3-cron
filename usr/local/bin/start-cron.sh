@@ -44,6 +44,9 @@ else
   echo "${CRON_ENTRY}" | crontab -
 fi
 
+echo "Exportando variáveis de ambiente para o cron"
+env > /etc/environment
+
 echo "Cron job configurado com sucesso:"
 crontab -l
 
