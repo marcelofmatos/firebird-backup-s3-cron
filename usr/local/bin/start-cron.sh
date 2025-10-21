@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 CRON_SCHEDULE=${CRON_SCHEDULE:-"0 0 * * *"}
 CRON_BACKUP_COMMAND=${CRON_BACKUP_COMMAND:-"/usr/local/bin/backup.sh > /proc/1/fd/1 2>&1"}

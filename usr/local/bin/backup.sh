@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 FB_HOST=${FB_HOST:-"localhost"}
 FB_PORT=${FB_PORT:-"3050"}
