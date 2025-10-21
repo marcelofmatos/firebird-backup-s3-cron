@@ -172,7 +172,7 @@ jobs:
           docker run -d -p 8080:3000 --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$NEW_VERSION
           \`\`\`
           
-          **Platforms**: linux/amd64, linux/arm64
+          **Platforms**: linux/amd64
           
           ### 📋 Release Info
           - **Type**: $VERSION_TYPE release
@@ -269,7 +269,7 @@ jobs:
           echo "## ✅ Release $NEW_VERSION Created and Published!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**🏷️ Version**: $NEW_VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "**🌍 Platforms**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "**🌍 Platforms**: linux/amd64" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🐳 Docker Tags Available" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$NEW_VERSION\` (full version)" >> $GITHUB_STEP_SUMMARY
