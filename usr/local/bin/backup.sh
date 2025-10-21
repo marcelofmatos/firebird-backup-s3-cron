@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source /etc/environment
+
 FB_HOST=${FB_HOST:-"localhost"}
 FB_PORT=${FB_PORT:-"3050"}
 FB_USER=${FB_USER:-"SYSDBA"}
