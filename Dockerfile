@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     gzip \
     zip \
+    unzip \
     p7zip-full \
     cron \
     tzdata \

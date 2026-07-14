@@ -24,7 +24,11 @@ services:
         max_attempts: 3
         window: 120s
     volumes:
-      - backup-data:/backup
+      # gbak -se grava o .fbk do lado do servidor: este volume precisa estar montado
+      # no MESMO caminho no container do Firebird (BACKUP_DIR, padrão /data/backups)
+      - backup-data:/data/backups
+      # usado apenas pelo RESTORE_BACKUP_FILE: montar também em /docker-entrypoint-initdb.d
+      # no container do Firebird, para o entrypoint dele executar o restore
       - restore-data:/docker-entrypoint-initdb.d
 
 volumes:

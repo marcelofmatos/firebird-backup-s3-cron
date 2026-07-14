@@ -64,7 +64,16 @@ docker exec <container_id> /usr/local/bin/list.sh
 
 ### Restaurar backup
 ```bash
-docker exec <container_id> /usr/local/bin/restore.sh backup_20240101_120000.fbk.gz
+# nome exato do arquivo vem do list.sh: <FB_HOST>_<DB>_<timestamp>.<ext>
+docker exec <container_id> /usr/local/bin/restore.sh firebird-server_DATABASE_20240101_120000.fbk.gz
+```
+
+Aceita `.fbk`, `.fbk.gz`, `.fbk.zip` e `.fbk.7z`. O script baixa, descompacta e imprime o
+comando `gbak` de restauração — que você executa manualmente:
+
+```bash
+docker exec -it <container_id> bash
+gbak -c -v "/restore/<arquivo>.fbk" "$FB_HOST/$FB_PORT:$FB_DATABASE_PATH" -user "$FB_USER" -pass "$FB_PASSWORD"
 ```
 
 ## ⚡ Exemplo Comando gbak

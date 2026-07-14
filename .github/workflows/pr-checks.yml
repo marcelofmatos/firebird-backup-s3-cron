@@ -46,3 +46,16 @@ jobs:
 
       - name: Build Docker image
         run: docker build --build-arg APP_VERSION=test_build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) .
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Testes de backup e restore
+        run: ./tests/run.sh

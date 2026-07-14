@@ -67,7 +67,8 @@ if gbak -b -v -g -se "$FB_HOST:$FB_PORT" "$FB_DATABASE_PATH" "$BACKUP_FILE_FBK" 
             fi
             ;;
         none|"")
-            cp "$BACKUP_FILE_FBK" "$ARCHIVE_FILE"
+            # Sem compressão: ARCHIVE_FILE é o próprio .fbk, nada a fazer
+            true
             ;;
         gzip|tgz|*)
             gzip -c "$BACKUP_FILE_FBK" > "$ARCHIVE_FILE"
@@ -83,26 +84,33 @@ if gbak -b -v -g -se "$FB_HOST:$FB_PORT" "$FB_DATABASE_PATH" "$BACKUP_FILE_FBK" 
             rm "$BACKUP_FILE_FBK"
         fi
         
+        UPLOADED=false
         if [ -n "$S3_BUCKET_NAME" ]; then
             echo "Enviando para S3..."
             if aws s3 cp "$ARCHIVE_FILE" "s3://$S3_BUCKET_NAME/$S3_DIRECTORY_NAME/" --region "$S3_REGION" --storage-class GLACIER_IR $S3_PARAMS; then
                 echo "Backup enviado para S3 com sucesso"
+                UPLOADED=true
             else
                 echo "Erro ao enviar backup para S3"
                 exit 1
             fi
+        else
+            echo "S3_BUCKET_NAME não definido: backup mantido apenas localmente em $ARCHIVE_FILE"
         fi
-        # Remove local archive if DELETE_LOCAL_AFTER_UPLOAD is true
-        case "${DELETE_LOCAL_AFTER_UPLOAD:-true}" in
-            1|true|TRUE|True|y|Y|yes|YES|Yes)
-                echo "Flag DELETE_LOCAL_AFTER_UPLOAD ativa: arquivo será removido após envio."
-                rm "$ARCHIVE_FILE"
-                echo "Arquivo local removido"
-                ;;
-            *)
-                echo "Flag DELETE_LOCAL_AFTER_UPLOAD desativada: mantendo arquivo original."
-                ;;
-        esac
+
+        # Remove local archive if DELETE_LOCAL_AFTER_UPLOAD is true, mas só depois de um upload confirmado
+        if [ "$UPLOADED" = true ]; then
+            case "${DELETE_LOCAL_AFTER_UPLOAD:-true}" in
+                1|true|TRUE|True|y|Y|yes|YES|Yes)
+                    echo "Flag DELETE_LOCAL_AFTER_UPLOAD ativa: arquivo será removido após envio."
+                    rm "$ARCHIVE_FILE"
+                    echo "Arquivo local removido"
+                    ;;
+                *)
+                    echo "Flag DELETE_LOCAL_AFTER_UPLOAD desativada: mantendo arquivo original."
+                    ;;
+            esac
+        fi
     else
         echo "Erro na compressão"
         [ -f "$BACKUP_FILE_FBK" ] && rm "$BACKUP_FILE_FBK"
