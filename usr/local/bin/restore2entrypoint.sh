@@ -3,8 +3,6 @@
 source /etc/environment
 source /usr/local/lib/firebird-backup/common.sh
 
-FB_USER=${FB_USER:-"SYSDBA"}
-FB_PASSWORD=${FB_PASSWORD:-"masterkey"}
 FB_DATABASE_PATH=${FB_DATABASE_PATH:-"/data/DATABASE.FDB"}
 S3_BUCKET_NAME=${S3_BUCKET_NAME:-""}
 S3_DIRECTORY_NAME=${S3_DIRECTORY_NAME:-"firebird-backups"}
@@ -19,38 +17,43 @@ if [ -z "$FILENAME" ]; then
     exit 1
 fi
 
+# O .fbk e o fbk_restore.sh ficam num subdiretório: o entrypoint do Firebird executa
+# apenas os *.sh do primeiro nível de INITDB_DIR, e quem dispara o restore é o wrapper.
+PAYLOAD_DIR="$INITDB_DIR/restore"
+WRAPPER="$INITDB_DIR/10-restore.sh"
+
 # Remove um preparo anterior para não restaurar um backup obsoleto no próximo start
-rm -f "$INITDB_DIR"/10-restore-*.sh "$INITDB_DIR"/*.fbk
+rm -rf "$PAYLOAD_DIR" "$WRAPPER"
 
-fb_download_backup "$FILENAME" "$INITDB_DIR" || exit 1
+fb_download_backup "$FILENAME" "$PAYLOAD_DIR" || exit 1
 
-FBK_FILE=$(fb_extract_backup "$INITDB_DIR/$FILENAME") || exit 1
+FBK_FILE=$(fb_extract_backup "$PAYLOAD_DIR/$FILENAME") || exit 1
 
-INIT_SCRIPT="$INITDB_DIR/10-restore-$(basename "$FBK_FILE" .fbk).sh"
+cp /usr/local/bin/fbk_restore.sh "$PAYLOAD_DIR/fbk_restore.sh"
+chmod +x "$PAYLOAD_DIR/fbk_restore.sh"
 
-cat > "$INIT_SCRIPT" <<EOF
+# O wrapper roda dentro do container do Firebird. As credenciais vêm do ambiente DELE
+# (FIREBIRD_USER / FIREBIRD_PASSWORD / FIREBIRD_ROOT_PASSWORD), nunca gravadas aqui.
+cat > "$WRAPPER" <<EOF
 #!/bin/sh
-# Gerado por restore2entrypoint.sh — executado pelo entrypoint da imagem Firebird
-# na primeira inicialização do servidor.
+# Gerado por restore2entrypoint.sh — executado pelo entrypoint da imagem Firebird.
 set -e
 
-FBK_FILE="$FBK_FILE"
-FB_DATABASE_PATH="$FB_DATABASE_PATH"
+export FBK_FILE="$FBK_FILE"
+export DB_PATH="$FB_DATABASE_PATH"
 
-if [ -f "\$FB_DATABASE_PATH" ]; then
-    echo "Banco já existe em \$FB_DATABASE_PATH — restore ignorado."
-    exit 0
+if [ -z "\${FIREBIRD_PASSWORD:-}" ] && [ -n "\${FIREBIRD_ROOT_PASSWORD:-}" ]; then
+    export FIREBIRD_PASSWORD="\$FIREBIRD_ROOT_PASSWORD"
 fi
 
-echo "Restaurando \$FBK_FILE em \$FB_DATABASE_PATH..."
-gbak -c -v "\$FBK_FILE" "\$FB_DATABASE_PATH" -user "$FB_USER" -pass "$FB_PASSWORD"
-echo "Restore concluído."
+exec "$PAYLOAD_DIR/fbk_restore.sh"
 EOF
 
-chmod +x "$INIT_SCRIPT"
+chmod +x "$WRAPPER"
 
 echo "Backup preparado para restauração automática:"
 echo "  backup:  $FBK_FILE"
-echo "  script:  $INIT_SCRIPT"
+echo "  restore: $PAYLOAD_DIR/fbk_restore.sh"
+echo "  wrapper: $WRAPPER"
 echo "O servidor Firebird restaura o banco no próximo start, se $FB_DATABASE_PATH ainda não existir."
-echo "Atenção: $INIT_SCRIPT contém a senha do banco e fica no volume compartilhado."
+echo "As credenciais usadas são as do próprio container do Firebird (FIREBIRD_USER/FIREBIRD_PASSWORD)."

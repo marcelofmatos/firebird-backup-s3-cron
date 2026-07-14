@@ -128,13 +128,26 @@ propositalmente para não destruir um banco existente por engano.
 
 ### Restauração automática no start do Firebird (RESTORE_BACKUP_FILE)
 
-Definindo `RESTORE_BACKUP_FILE`, o container baixa o backup no start, descompacta e gera um
-script de init em `/docker-entrypoint-initdb.d` que o **entrypoint da imagem do Firebird**
-executa, restaurando o banco caso `FB_DATABASE_PATH` ainda não exista. Requer que o volume
-`/docker-entrypoint-initdb.d` seja compartilhado entre este container e o do servidor Firebird.
+Definindo `RESTORE_BACKUP_FILE`, o container baixa o backup no start e prepara o volume
+`/docker-entrypoint-initdb.d`, que precisa ser compartilhado com o container do servidor Firebird:
 
-O script gerado contém a senha do banco em texto puro e fica no volume compartilhado — remova-o
-(e a variável `RESTORE_BACKUP_FILE`) depois que o restore concluir.
+```
+/docker-entrypoint-initdb.d/
+├── 10-restore.sh          # wrapper executado pelo entrypoint do Firebird
+└── restore/
+    ├── <backup>.fbk       # backup já descompactado
+    └── fbk_restore.sh     # faz o gbak -c, ajusta owner/permissões do .fdb
+```
+
+O wrapper apenas aponta `FBK_FILE` e `DB_PATH` (= `FB_DATABASE_PATH`) e delega ao
+`fbk_restore.sh`. O `.fbk` e o `fbk_restore.sh` ficam no subdiretório `restore/` de propósito:
+o entrypoint do Firebird executa apenas os `*.sh` do primeiro nível, então quem dispara o
+restore é o wrapper, uma única vez.
+
+As credenciais **não** são gravadas no volume: o `fbk_restore.sh` roda dentro do container do
+Firebird e usa o ambiente dele (`FIREBIRD_USER` / `FIREBIRD_PASSWORD`, com fallback para
+`FIREBIRD_ROOT_PASSWORD`). Se o banco já existir em `FB_DATABASE_PATH`, o restore é ignorado —
+para sobrescrever, defina `FORCE_RESTORE=true` no container do Firebird.
 
 ## Testes Automatizados
 

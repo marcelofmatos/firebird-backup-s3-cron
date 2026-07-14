@@ -7,7 +7,7 @@ set -e  # Parar execução em caso de erro
 
 # Configurações padrão
 FBK_FILE="${FBK_FILE:-/backup/database.fbk}"
-DB_PATH="${FIREBIRD_DATABASE:-/var/lib/firebird/data/database.fdb}"
+DB_PATH="${DB_PATH:-${FIREBIRD_DATABASE:-/var/lib/firebird/data/database.fdb}}"
 FB_USER="${FIREBIRD_USER:-SYSDBA}"
 FB_PASSWORD="${FIREBIRD_PASSWORD:-masterkey}"
 FB_HOST="${FB_HOST:-localhost}"
@@ -56,8 +56,8 @@ log "Destino: $DB_PATH"
 log "Usuário: $FB_USER"
 log "Host: $FB_HOST:$FB_PORT"
 
-# Construir comando gbak
-GBAK_CMD="/opt/firebird/bin/gbak"
+# Construir comando gbak (o caminho varia conforme a imagem do Firebird)
+GBAK_CMD="${GBAK_CMD:-$(command -v gbak || echo /opt/firebird/bin/gbak)}"
 GBAK_ARGS="-c -user $FB_USER -password $FB_PASSWORD"
 
 # Adicionar argumentos opcionais
