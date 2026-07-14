@@ -152,6 +152,28 @@ else
     FAILED=1
 fi
 
+echo "=== TEST_CONNECTION usa o isql disponível na imagem ==="
+# stub em /usr/local/bin (vem antes de /usr/bin no PATH) para sombrear o isql-fb real
+cat > /usr/local/bin/isql-fb <<'EOF'
+#!/bin/bash
+echo "$@" > /tmp/isql-args
+EOF
+chmod +x /usr/local/bin/isql-fb
+
+rm -f /data/DATABASE.FDB /tmp/isql-args
+if env -i PATH="$PATH" FIREBIRD_ROOT_PASSWORD=senha-do-servidor TEST_CONNECTION=true "$WRAPPER" 2>&1 | grep -q "Teste de conectividade: OK"; then
+    echo "PASS: teste de conectividade executado após o restore"
+else
+    echo "FAIL: teste de conectividade não rodou ou falhou"
+    FAILED=1
+fi
+if [ -f /tmp/isql-args ]; then
+    echo "PASS: isql encontrado via PATH (args: $(cat /tmp/isql-args))"
+else
+    echo "FAIL: o isql do PATH não foi chamado"
+    FAILED=1
+fi
+
 echo "=== restore2entrypoint.sh: um novo preparo substitui o anterior ==="
 /usr/local/bin/restore2entrypoint.sh "$BASE.fbk.gz" >/dev/null 2>&1
 COUNT=$(find "$INITDB" -maxdepth 1 -name '*.sh' | wc -l)

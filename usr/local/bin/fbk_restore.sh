@@ -93,7 +93,9 @@ if $GBAK_CMD $GBAK_ARGS "$FBK_FILE" "$DB_PATH"; then
     # Teste de conectividade (opcional)
     if [ "$TEST_CONNECTION" = "true" ]; then
         log "Testando conectividade..."
-        if /usr/local/firebird/bin/isql -user "$FB_USER" -password "$FB_PASSWORD" "$DB_PATH" -q <<< "SELECT 1 FROM RDB\$DATABASE;"; then
+        # o nome do binário varia conforme a imagem: isql-fb (pacotes Debian/Ubuntu) ou isql
+        ISQL_CMD="${ISQL_CMD:-$(command -v isql-fb || command -v isql || echo /usr/local/firebird/bin/isql)}"
+        if $ISQL_CMD -user "$FB_USER" -password "$FB_PASSWORD" "$DB_PATH" -q <<< "SELECT 1 FROM RDB\$DATABASE;"; then
             log "Teste de conectividade: OK"
         else
             error "Falha no teste de conectividade"
