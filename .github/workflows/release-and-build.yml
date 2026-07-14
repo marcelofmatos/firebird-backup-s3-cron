@@ -30,7 +30,9 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+
     steps:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
@@ -297,3 +299,35 @@ jobs:
           echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR_VERSION" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # Atualiza os serviços em execução. Ficava no docker-image.yml, em on: release: published,
+  # mas o GitHub não dispara workflows a partir de eventos criados com o GITHUB_TOKEN —
+  # o deploy nunca acontecia. Aqui ele roda no mesmo workflow que publicou a imagem.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [release, build]
+    if: github.event.inputs.prerelease != 'true'
+    steps:
+      - name: 🚀 Deploy services
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_DEPLOY_MAIN }}
+          NEW_VERSION: ${{ needs.release.outputs.new_version }}
+          REPOSITORY: ${{ github.repository }}
+          REGISTRY: ${{ env.REGISTRY }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "::warning::WEBHOOK_DEPLOY_MAIN não configurado — nenhum serviço foi atualizado"
+            exit 0
+          fi
+
+          REPO_LC=$(echo "$REPOSITORY" | tr '[:upper:]' '[:lower:]')
+
+          for IMAGE in "$REGISTRY/$REPO_LC:$NEW_VERSION" "$REGISTRY/$REPO_LC:latest"; do
+            echo "Deploying image: $IMAGE"
+            curl --silent --fail --show-error -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{\"image_name\": \"$IMAGE\"}"
+            sleep 1
+          done
+
+          echo "### 🚀 Serviços atualizados para $NEW_VERSION" >> $GITHUB_STEP_SUMMARY
