@@ -43,23 +43,61 @@ check_fbk() { # check_fbk <label> <caminho_esperado>
     fi
 }
 
-echo "=== restore.sh: os 4 formatos gerados pelo backup.sh ==="
+# stub gbak: registra os argumentos e "cria" o banco no caminho da string de conexão
+# (host/porta:/caminho/do.fdb). Falha se o arquivo de destino já existir, como o gbak -c faz.
+cat > /usr/local/bin/gbak <<'EOF'
+#!/bin/bash
+echo "$@" > /tmp/gbak-args
+for arg in "$@"; do
+    case "$arg" in
+        */*:/*) DB="${arg#*:}" ;;
+    esac
+done
+if [ -f "$DB" ]; then
+    echo "gbak: ERROR: database $DB already exists" >&2
+    exit 1
+fi
+mkdir -p "$(dirname "$DB")"
+printf 'banco-restaurado' > "$DB"
+EOF
+chmod +x /usr/local/bin/gbak
+
+echo "=== restore.sh: restaura os 4 formatos num caminho novo ==="
 for fmt in $FORMATS; do
     FILE=$(archive_for "$fmt")
-    rm -rf /restore
+    rm -rf /restore /data
+    rm -f /tmp/gbak-args
+    printf 'banco-de-producao' > /tmp/prod.fdb
+    mkdir -p /data && cp /tmp/prod.fdb "$FB_DATABASE_PATH"
+
     if ! OUT=$(RESTORE_DIR=/restore /usr/local/bin/restore.sh "$FILE" 2>&1); then
         echo "FAIL: $fmt — restore.sh saiu com erro"
         echo "$OUT"
         FAILED=1
         continue
     fi
-    check_fbk "restore.sh $fmt" "/restore/$BASE.fbk"
+    check_fbk "restore.sh $fmt descompactou" "/restore/$BASE.fbk"
 
-    # o comando de restauração precisa ser impresso, apontando para o .fbk descompactado
-    if echo "$OUT" | grep -q "^gbak -c -v \"/restore/$BASE.fbk\""; then
-        echo "PASS: restore.sh $fmt imprimiu o comando gbak"
+    # o gbak precisa ter sido executado sobre o .fbk, num caminho novo
+    if grep -q -- "-c -v /restore/$BASE.fbk firebird-server/3050:/data/DATABASE_RESTORE.FDB" /tmp/gbak-args 2>/dev/null; then
+        echo "PASS: restore.sh $fmt executou o gbak no caminho novo"
     else
-        echo "FAIL: restore.sh $fmt não imprimiu o comando gbak esperado"
+        echo "FAIL: restore.sh $fmt não chamou o gbak como esperado (args: $(cat /tmp/gbak-args 2>/dev/null))"
+        FAILED=1
+    fi
+
+    if [ -f /data/DATABASE_RESTORE.FDB ]; then
+        echo "PASS: restore.sh $fmt criou o banco restaurado"
+    else
+        echo "FAIL: restore.sh $fmt não criou o banco restaurado"
+        FAILED=1
+    fi
+
+    # o banco de produção não pode ser tocado
+    if [ "$(cat "$FB_DATABASE_PATH")" = "banco-de-producao" ]; then
+        echo "PASS: restore.sh $fmt não tocou em $FB_DATABASE_PATH"
+    else
+        echo "FAIL: restore.sh $fmt alterou o banco de produção!"
         FAILED=1
     fi
 
@@ -69,6 +107,52 @@ for fmt in $FORMATS; do
         FAILED=1
     fi
 done
+
+echo "=== restore.sh: RESTORE_DATABASE_PATH sobrescreve o destino ==="
+rm -rf /restore /data
+if RESTORE_DIR=/restore RESTORE_DATABASE_PATH=/data/OUTRO.FDB /usr/local/bin/restore.sh "$BASE.fbk.gz" >/dev/null 2>&1 && [ -f /data/OUTRO.FDB ]; then
+    echo "PASS: banco restaurado em /data/OUTRO.FDB"
+else
+    echo "FAIL: RESTORE_DATABASE_PATH não foi respeitado"
+    FAILED=1
+fi
+
+echo "=== restore.sh --extract-only: prepara o .fbk e não executa o gbak ==="
+# preserva o /data/OUTRO.FDB criado acima, usado pelo teste seguinte
+rm -rf /restore
+rm -f /tmp/gbak-args /data/DATABASE_RESTORE.FDB
+if OUT=$(RESTORE_DIR=/restore /usr/local/bin/restore.sh --extract-only "$BASE.fbk.gz" 2>&1); then
+    check_fbk "--extract-only descompactou" "/restore/$BASE.fbk"
+    if echo "$OUT" | grep -q "^gbak -c -v \"/restore/$BASE.fbk\" \"firebird-server/3050:/data/DATABASE_RESTORE.FDB\""; then
+        echo "PASS: --extract-only imprimiu o comando gbak"
+    else
+        echo "FAIL: --extract-only não imprimiu o comando gbak esperado"
+        FAILED=1
+    fi
+    if [ -f /tmp/gbak-args ] || [ -f /data/DATABASE_RESTORE.FDB ]; then
+        echo "FAIL: --extract-only executou o gbak"
+        FAILED=1
+    else
+        echo "PASS: --extract-only não executou o gbak"
+    fi
+else
+    echo "FAIL: restore.sh --extract-only saiu com erro"
+    FAILED=1
+fi
+
+echo "=== restore.sh: destino já existente aborta sem destruir nada ==="
+rm -rf /restore
+if RESTORE_DIR=/restore RESTORE_DATABASE_PATH=/data/OUTRO.FDB /usr/local/bin/restore.sh "$BASE.fbk.gz" >/dev/null 2>&1; then
+    echo "FAIL: restore.sh deveria falhar quando o destino já existe"
+    FAILED=1
+else
+    if [ "$(cat /data/OUTRO.FDB)" = "banco-restaurado" ]; then
+        echo "PASS: restore.sh falhou e preservou o banco existente"
+    else
+        echo "FAIL: o banco existente foi corrompido"
+        FAILED=1
+    fi
+fi
 
 INITDB=/docker-entrypoint-initdb.d
 WRAPPER="$INITDB/10-restore.sh"

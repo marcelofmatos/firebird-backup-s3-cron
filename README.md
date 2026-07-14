@@ -114,17 +114,31 @@ docker exec <container_id> /usr/local/bin/restore.sh firebird-server_DATABASE_20
 ```
 
 O script baixa do S3, descompacta (qualquer um dos quatro formatos) em `RESTORE_DIR`
-(padrão `/restore`) e **imprime** o comando `gbak` de restauração — nada é sobrescrito
-automaticamente. O comando impresso não usa `-se`: o `gbak` lê o `.fbk` dentro do container
-de backup e o envia ao servidor pela rede (porta 3050), então o arquivo não precisa estar
-visível para o servidor:
+(padrão `/restore`) e restaura com `gbak -c`.
+
+**O banco em `FB_DATABASE_PATH` nunca é sobrescrito.** A restauração vai para um caminho novo,
+`RESTORE_DATABASE_PATH` (padrão: `FB_DATABASE_PATH` com sufixo `_RESTORE`, ex.:
+`/data/DATABASE_RESTORE.FDB`), então o banco de produção segue no ar durante todo o processo —
+o que importa num restore de vários GB. A troca fica a cargo do operador, e o script imprime os
+passos ao final. Se o caminho de destino já existir, o `gbak -c` aborta sem destruir nada.
+
+O `gbak` não usa `-se`: ele lê o `.fbk` dentro do container de backup e envia ao servidor pela
+rede (porta 3050), então o arquivo não precisa estar visível para o servidor.
+
+Para promover o banco restaurado, dentro do container do **Firebird** (fecha as conexões, troca
+o arquivo e guarda o antigo):
 
 ```bash
-gbak -c -v "/restore/<arquivo>.fbk" "$FB_HOST/$FB_PORT:$FB_DATABASE_PATH" -user "$FB_USER" -pass "$FB_PASSWORD"
+gfix -shut -force 30 -user SYSDBA -password <senha> /data/DATABASE.FDB
+mv /data/DATABASE.FDB /data/DATABASE.FDB.old
+mv /data/DATABASE_RESTORE.FDB /data/DATABASE.FDB
 ```
 
-Se o banco de destino já existir, troque `-c` (create) por `-rep` (replace) — `-c` falha
-propositalmente para não destruir um banco existente por engano.
+Para só baixar e descompactar, sem restaurar — o script imprime o comando `gbak` e sai:
+
+```bash
+docker exec <container_id> /usr/local/bin/restore.sh --extract-only <arquivo>
+```
 
 ### Restauração automática no start do Firebird (RESTORE_BACKUP_FILE)
 

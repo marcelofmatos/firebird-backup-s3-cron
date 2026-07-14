@@ -68,12 +68,14 @@ docker exec <container_id> /usr/local/bin/list.sh
 docker exec <container_id> /usr/local/bin/restore.sh firebird-server_DATABASE_20240101_120000.fbk.gz
 ```
 
-Aceita `.fbk`, `.fbk.gz`, `.fbk.zip` e `.fbk.7z`. O script baixa, descompacta e imprime o
-comando `gbak` de restauração — que você executa manualmente:
+Aceita `.fbk`, `.fbk.gz`, `.fbk.zip` e `.fbk.7z`. O script baixa, descompacta e restaura num
+**caminho novo** (`RESTORE_DATABASE_PATH`, padrão `<FB_DATABASE_PATH>_RESTORE.FDB`) — o banco de
+produção nunca é sobrescrito, e a troca dos arquivos fica com você (o script imprime os passos).
+
+Para só baixar e descompactar, sem restaurar:
 
 ```bash
-docker exec -it <container_id> bash
-gbak -c -v "/restore/<arquivo>.fbk" "$FB_HOST/$FB_PORT:$FB_DATABASE_PATH" -user "$FB_USER" -pass "$FB_PASSWORD"
+docker exec <container_id> /usr/local/bin/restore.sh --extract-only <arquivo>
 ```
 
 ## ⚡ Exemplo Comando gbak
