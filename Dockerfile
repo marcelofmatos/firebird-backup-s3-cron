@@ -1,10 +1,14 @@
-FROM ubuntu:22.04
+# Imagem oficial do Firebird: traz gbak/isql/gfix na versão do servidor.
+# O gbak precisa ser >= ao do servidor — um gbak 3.0 não lê um backup gerado por um
+# servidor 5.0 ("Expected backup version 1..10. Found 11"). A base é jammy (Ubuntu 22.04).
+FROM firebirdsql/firebird:5.0.4-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# /usr/local/bin antes de /opt/firebird/bin: os scripts do projeto têm precedência
+ENV PATH=/usr/local/sbin:/usr/local/bin:/opt/firebird/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 RUN apt-get update && apt-get install -y \
-    firebird3.0-utils \
-    firebird3.0-common \
     curl \
     ca-certificates \
     python3-pip \
@@ -15,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     cron \
     tzdata \
     && pip3 install awscli \
+    && ln -s /opt/firebird/bin/isql /usr/local/bin/isql-fb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,10 +37,11 @@ ENV COMPRESSION_TYPE=gzip
 ENV CRON_SCHEDULE="0 22 * * *"
 ENV CRON_BACKUP_COMMAND="/usr/local/bin/backup.sh > /proc/1/fd/1 2>&1"
 
-RUN mkdir -p /backup
-
 COPY etc /etc
 COPY usr /usr
 RUN chmod +x /usr/local/bin/*.sh
 
+# Neutraliza o entrypoint da imagem base, que sobe o servidor Firebird:
+# aqui o container roda o cron de backup, não serve banco.
+ENTRYPOINT []
 CMD ["/usr/local/bin/start-cron.sh"]

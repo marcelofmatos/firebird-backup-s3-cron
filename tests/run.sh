@@ -20,7 +20,7 @@ else
 fi
 
 FAILED=0
-for suite in backup restore; do
+for suite in image backup restore; do
     echo ""
     echo "########## suíte: $suite ##########"
     if ! docker run --rm -v "$ROOT/tests:/tests:ro" --entrypoint bash "$IMAGE" "/tests/${suite}_test.sh"; then

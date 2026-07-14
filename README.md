@@ -2,7 +2,14 @@
 
 Sistema automatizado de backup para bancos de dados Firebird com envio para Amazon S3.
 
-Baseado em Ubuntu 22.04 com ferramentas oficiais do Firebird.
+Baseado na imagem oficial `firebirdsql/firebird:5.0.4-jammy` (Ubuntu 22.04), da qual herda os
+utilitários `gbak`, `isql` e `gfix`. O servidor Firebird da imagem base **não** é iniciado — o
+container roda apenas o cron de backup.
+
+> **Versão do gbak.** O `gbak` do cliente precisa ser igual ou mais novo que o do servidor: um
+> `gbak` 3.0 não lê um backup gerado por um servidor 5.0 (`Expected backup version 1..10. Found
+> 11`), enquanto um `gbak` 5.0 lê os formatos antigos. Por isso a imagem acompanha a última
+> série 5.x. Se o seu servidor for mais novo que isso, atualize a tag da base no `Dockerfile`.
 
 ## Funcionamento
 
