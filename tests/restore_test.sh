@@ -43,16 +43,18 @@ check_fbk() { # check_fbk <label> <caminho_esperado>
     fi
 }
 
-# stub gbak: registra os argumentos e "cria" o banco no caminho da string de conexão
-# (host/porta:/caminho/do.fdb). Falha se o arquivo de destino já existir, como o gbak -c faz.
+# stub gbak: registra os argumentos e "cria" o banco no destino, que vem logo depois do .fbk.
+# O destino pode ser local (/caminho/do.fdb) ou remoto (host/porta:/caminho/do.fdb).
+# Falha se o arquivo já existir, como o gbak -c faz.
 cat > /usr/local/bin/gbak <<'EOF'
 #!/bin/bash
 echo "$@" > /tmp/gbak-args
+NEXT_IS_DB=0
 for arg in "$@"; do
-    case "$arg" in
-        */*:/*) DB="${arg#*:}" ;;
-    esac
+    [ "$NEXT_IS_DB" = 1 ] && { DB="$arg"; NEXT_IS_DB=0; }
+    case "$arg" in *.fbk) NEXT_IS_DB=1 ;; esac
 done
+DB="${DB#*:}"   # remove o host/porta quando o destino é remoto
 if [ -f "$DB" ]; then
     echo "gbak: ERROR: database $DB already exists" >&2
     exit 1
@@ -62,13 +64,12 @@ printf 'banco-restaurado' > "$DB"
 EOF
 chmod +x /usr/local/bin/gbak
 
-echo "=== restore.sh: restaura os 4 formatos num caminho novo ==="
+echo "=== restore.sh: restaura os 4 formatos localmente (padrão) ==="
 for fmt in $FORMATS; do
     FILE=$(archive_for "$fmt")
     rm -rf /restore /data
     rm -f /tmp/gbak-args
-    printf 'banco-de-producao' > /tmp/prod.fdb
-    mkdir -p /data && cp /tmp/prod.fdb "$FB_DATABASE_PATH"
+    mkdir -p /data && printf 'banco-de-producao' > "$FB_DATABASE_PATH"
 
     if ! OUT=$(RESTORE_DIR=/restore /usr/local/bin/restore.sh "$FILE" 2>&1); then
         echo "FAIL: $fmt — restore.sh saiu com erro"
@@ -78,15 +79,15 @@ for fmt in $FORMATS; do
     fi
     check_fbk "restore.sh $fmt descompactou" "/restore/$BASE.fbk"
 
-    # o gbak precisa ter sido executado sobre o .fbk, num caminho novo
-    if grep -q -- "-c -v /restore/$BASE.fbk firebird-server/3050:/data/DATABASE_RESTORE.FDB" /tmp/gbak-args 2>/dev/null; then
-        echo "PASS: restore.sh $fmt executou o gbak no caminho novo"
+    # por padrão o gbak roda local: destino sem host, dentro do RESTORE_DIR
+    if grep -q -- "-c -v /restore/$BASE.fbk /restore/DATABASE_RESTORE.FDB" /tmp/gbak-args 2>/dev/null; then
+        echo "PASS: restore.sh $fmt restaurou localmente (sem servidor)"
     else
         echo "FAIL: restore.sh $fmt não chamou o gbak como esperado (args: $(cat /tmp/gbak-args 2>/dev/null))"
         FAILED=1
     fi
 
-    if [ -f /data/DATABASE_RESTORE.FDB ]; then
+    if [ -f /restore/DATABASE_RESTORE.FDB ]; then
         echo "PASS: restore.sh $fmt criou o banco restaurado"
     else
         echo "FAIL: restore.sh $fmt não criou o banco restaurado"
@@ -108,6 +109,22 @@ for fmt in $FORMATS; do
     fi
 done
 
+echo "=== restore.sh --restore-on-remote: cria o banco no servidor ==="
+rm -rf /restore /data
+rm -f /tmp/gbak-args
+if OUT=$(RESTORE_DIR=/restore /usr/local/bin/restore.sh --restore-on-remote "$BASE.fbk.gz" 2>&1); then
+    if grep -q -- "-c -v /restore/$BASE.fbk firebird-server/3050:/data/DATABASE_RESTORE.FDB" /tmp/gbak-args 2>/dev/null; then
+        echo "PASS: --restore-on-remote apontou o gbak para o servidor"
+    else
+        echo "FAIL: --restore-on-remote não chamou o gbak como esperado (args: $(cat /tmp/gbak-args 2>/dev/null))"
+        FAILED=1
+    fi
+else
+    echo "FAIL: restore.sh --restore-on-remote saiu com erro"
+    echo "$OUT"
+    FAILED=1
+fi
+
 echo "=== restore.sh: RESTORE_DATABASE_PATH sobrescreve o destino ==="
 rm -rf /restore /data
 if RESTORE_DIR=/restore RESTORE_DATABASE_PATH=/data/OUTRO.FDB /usr/local/bin/restore.sh "$BASE.fbk.gz" >/dev/null 2>&1 && [ -f /data/OUTRO.FDB ]; then
@@ -123,13 +140,13 @@ rm -rf /restore
 rm -f /tmp/gbak-args /data/DATABASE_RESTORE.FDB
 if OUT=$(RESTORE_DIR=/restore /usr/local/bin/restore.sh --extract-only "$BASE.fbk.gz" 2>&1); then
     check_fbk "--extract-only descompactou" "/restore/$BASE.fbk"
-    if echo "$OUT" | grep -q "^gbak -c -v \"/restore/$BASE.fbk\" \"firebird-server/3050:/data/DATABASE_RESTORE.FDB\""; then
+    if echo "$OUT" | grep -q "^gbak -c -v \"/restore/$BASE.fbk\" \"/restore/DATABASE_RESTORE.FDB\""; then
         echo "PASS: --extract-only imprimiu o comando gbak"
     else
         echo "FAIL: --extract-only não imprimiu o comando gbak esperado"
         FAILED=1
     fi
-    if [ -f /tmp/gbak-args ] || [ -f /data/DATABASE_RESTORE.FDB ]; then
+    if [ -f /tmp/gbak-args ] || [ -f /restore/DATABASE_RESTORE.FDB ]; then
         echo "FAIL: --extract-only executou o gbak"
         FAILED=1
     else

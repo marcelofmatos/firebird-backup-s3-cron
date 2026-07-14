@@ -124,28 +124,54 @@ O script baixa do S3, descompacta (qualquer um dos quatro formatos) em `RESTORE_
 (padrão `/restore`) e restaura com `gbak -c`.
 
 **O banco em `FB_DATABASE_PATH` nunca é sobrescrito.** A restauração vai para um caminho novo,
-`RESTORE_DATABASE_PATH` (padrão: `FB_DATABASE_PATH` com sufixo `_RESTORE`, ex.:
-`/data/DATABASE_RESTORE.FDB`), então o banco de produção segue no ar durante todo o processo —
-o que importa num restore de vários GB. A troca fica a cargo do operador, e o script imprime os
-passos ao final. Se o caminho de destino já existir, o `gbak -c` aborta sem destruir nada.
+`RESTORE_DATABASE_PATH`, então o banco de produção segue no ar durante todo o processo — o que
+importa num restore de vários GB. A troca fica a cargo do operador, e o script imprime os passos
+ao final. Se o destino já existir, o `gbak -c` aborta sem destruir nada.
 
-O `gbak` não usa `-se`: ele lê o `.fbk` dentro do container de backup e envia ao servidor pela
-rede (porta 3050), então o arquivo não precisa estar visível para o servidor.
+#### Local (padrão)
 
-Para promover o banco restaurado, dentro do container do **Firebird** (fecha as conexões, troca
-o arquivo e guarda o antigo):
+O `gbak` roda no próprio container de backup, com o motor embutido, e grava o `.fdb` em
+`RESTORE_DIR` (padrão `/restore/<DB>_RESTORE.FDB`). O servidor Firebird não participa: não há
+conexão, nem criação remota de banco. Depois é só levar o arquivo para o servidor e trocar.
+
+Aponte `RESTORE_DIR` (ou `RESTORE_DATABASE_PATH`) para um volume compartilhado com o servidor e
+o arquivo já nasce onde ele precisa estar — sem cópia. Reserve espaço: o `.fdb` restaurado tem a
+ordem de grandeza do backup descompactado.
+
+#### Remoto (`--restore-on-remote`)
+
+```bash
+docker exec <container_id> /usr/local/bin/restore.sh --restore-on-remote <arquivo>
+```
+
+O `gbak` lê o `.fbk` aqui e **cria o banco no servidor** pela rede (padrão:
+`<FB_DATABASE_PATH>_RESTORE.FDB`). Mais direto, mas o servidor precisa permitir: o usuário
+precisa do privilégio `CREATE DATABASE` e a política `DatabaseAccess` do `firebird.conf` precisa
+aceitar o caminho de destino — do contrário o Firebird responde
+`no permission for CREATE access to DATABASE`.
+
+#### Promover o banco restaurado
+
+Dentro do container do **Firebird** (fecha as conexões, troca o arquivo e guarda o antigo):
 
 ```bash
 gfix -shut -force 30 -user SYSDBA -password <senha> /data/DATABASE.FDB
 mv /data/DATABASE.FDB /data/DATABASE.FDB.old
 mv /data/DATABASE_RESTORE.FDB /data/DATABASE.FDB
+chown firebird:firebird /data/DATABASE.FDB && chmod 660 /data/DATABASE.FDB
 ```
 
-Para só baixar e descompactar, sem restaurar — o script imprime o comando `gbak` e sai:
+#### Só preparar o arquivo (`--extract-only`)
 
 ```bash
 docker exec <container_id> /usr/local/bin/restore.sh --extract-only <arquivo>
 ```
+
+Baixa, descompacta, imprime o comando `gbak` e sai sem executar nada.
+
+> **ODS.** O restore local produz um `.fdb` com o ODS do Firebird desta imagem (5.x). Se o seu
+> servidor for de uma série anterior, ele não abrirá esse arquivo — nesse caso use
+> `--restore-on-remote`, ou restaure dentro do container do servidor.
 
 ### Restauração automática no start do Firebird (RESTORE_BACKUP_FILE)
 
