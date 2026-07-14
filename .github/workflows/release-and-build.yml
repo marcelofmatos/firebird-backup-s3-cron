@@ -169,9 +169,12 @@ jobs:
           
           **Run the container:**
           \`\`\`bash
-          docker run -d -p 8080:3000 --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$NEW_VERSION
+          docker run -d --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$NEW_VERSION
           \`\`\`
-          
+
+          O container roda o cron de backup (\`CRON_SCHEDULE\`, padrão 22h) e não expõe portas.
+          Veja o README para as variáveis (\`FB_*\`, \`S3_*\`, \`COMPRESSION_TYPE\`) e para o restore.
+
           **Platforms**: linux/amd64
           
           ### 📋 Release Info
@@ -236,12 +239,11 @@ jobs:
             type=raw,value=${{ steps.semantic_tags.outputs.major_version }}
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=Fishboard
-            org.opencontainers.image.description=Modern project management dashboard
-            org.opencontainers.image.vendor=Abstrakt Agencia
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.title=Firebird Backup S3 Cron
+            org.opencontainers.image.description=Backup automatizado de bancos Firebird com envio para S3
+            org.opencontainers.image.vendor=marcelofmatos
 
-      - name: 🔍 Build and test Docker image
+      - name: 🔍 Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -249,6 +251,12 @@ jobs:
           tags: test-image
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: 🧪 Testes de backup e restore
+        env:
+          TEST_IMAGE: test-image
+          SKIP_BUILD: "true"
+        run: ./tests/run.sh
 
       - name: 🚀 Build and push Docker image
         uses: docker/build-push-action@v5
